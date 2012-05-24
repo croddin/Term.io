@@ -8,9 +8,9 @@ var connect = require('connect');
 var socketio = require('socket.io');
 var _ = require('underscore');
 
-require.paths.push(__dirname+"/public");
-require.paths.push(__dirname+"/lib");
-var TerminalSession = require('TerminalSession.js').TerminalSession;
+// require.paths.push(__dirname+"/public");
+// require.paths.push(__dirname+"/lib");
+var TerminalSession = require('./lib/TerminalSession.js').TerminalSession;
 
 var command = 'python';
 var commandArgs = ['-c', 'import pty;pty.spawn(["bash","-l"])'];
@@ -18,24 +18,26 @@ var commandArgs = ['-c', 'import pty;pty.spawn(["bash","-l"])'];
 
 function startServer(config){
 
-	var server;
+	var app, server;
 	var termSessions = {};
-
+    
 	if(config.ssl.on){
-		server = connect({
+		app = connect({
 			key: fs.readFileSync(config.ssl.keyPath),
 			cert: fs.readFileSync(config.ssl.certPath)
 		});
 	} else {
-		server = connect();
+		app = connect();
 	}
-
-	server.listen(config.port);
+	
+	server = app.listen(config.port);
 	var io = socketio.listen(server);
+
+	
 	io.configure(function(){
 		io.set('log level',0);
 	})
-	server.use(function(req, res, next){
+	app.use(function(req, res, next){
 		if (req.url === '/') {
 			res.writeHead(302, { 'Location': '/'+(_.size(termSessions) + 1) });
 			res.end();
@@ -43,13 +45,13 @@ function startServer(config){
 			next();
 		}
 	});
-	server.use(function(req, res, next){
+	app.use(function(req, res, next){
 	    if (/^\/\w+$/.test(req.url)) {
 	        req.url = '/';
 	    }
 	    next();
 	});
-	server.use(connect['static'](__dirname + '/public'));
+	app.use(connect['static'](__dirname + '/public'));
 
 	io.sockets.on('connection', function(client){
 	
